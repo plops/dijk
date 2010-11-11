@@ -89,3 +89,73 @@ source to the corresponding node."
 
 #+nil
 (dijkstra graph len 0)
+
+
+(defun read-pgm (filename)
+  (declare ((or pathname string) filename)
+	   (values (simple-array (unsigned-byte 8) 2) &optional))
+  (with-open-file (s filename)
+    (unless (equal (symbol-name (read s)) "P5")
+      (error "no PGM file"))
+    (let* ((w (read s))
+	   (h (read s))
+	   (grays (read s))
+	   (pos (file-position s))
+	   (data (make-array 
+		  (list h w)
+		  :element-type '(unsigned-byte 8)))
+	   (data-1d (make-array 
+		     (* h w)
+		     :element-type '(unsigned-byte 8)
+		     :displaced-to data)))
+      (declare ((simple-array (unsigned-byte 8) (* *)) data)
+	       ((array (unsigned-byte 8) (*)) data-1d)
+	       ((integer 0 65535) grays w h))
+      (unless (= grays 255)
+	(error "image has wrong bitdepth"))
+      (with-open-file (s filename
+			 :element-type '(unsigned-byte 8))
+	(file-position s pos)
+	(read-sequence data-1d s))
+      data)))
+
+
+(defun write-pgm (filename img)
+  (declare (simple-string filename)
+	   ((array (unsigned-byte 8) 2) img)
+	   (values null &optional))
+  (destructuring-bind (h w)
+      (array-dimensions img)
+    (declare ((integer 0 65535) w h))
+    (with-open-file (s filename
+		       :direction :output
+		       :if-exists :supersede
+		       :if-does-not-exist :create)
+      (declare (stream s))
+      (format s "P5~%~D ~D~%255~%" w h))
+    (with-open-file (s filename 
+		       :element-type '(unsigned-byte 8)
+		       :direction :output
+		       :if-exists :append)
+      (let ((data-1d (make-array 
+		      (* h w)
+		      :element-type '(unsigned-byte 8)
+		      :displaced-to img)))
+	(write-sequence data-1d s)))
+    nil))
+
+; a
+;lcr
+; b
+
+(defparameter m (read-pgm "maze.pgm"))
+(dotimes (j 50)
+ (dotimes (i 50) ;; centers, border pixels are at 3,4,5
+   (let* ((x (+ 3 2 (* 8 j)))
+	  (y (+ 3 2 (* 8 i)))
+	  (a (/ (aref m (+ y 3) x) 256))
+	  (l (/ (aref m y (- x 3)) 256))
+	  (r (/ (aref m y (+ x 3)) 256))
+	  (b (/ (aref m (- y 3) x) 256)))
+     (setf (aref m y x) a)))
+(write-pgm "o.pgm" m)
