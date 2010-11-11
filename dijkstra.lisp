@@ -96,6 +96,7 @@ source to the corresponding node."
 	   (setf unvisited (remove u unvisited))
 	   (let ((neighbors (intersection (elt graph u)
 					  unvisited)))
+	     (format t "~a~%" (list 'neigh neighbors))
 	     (dolist (v neighbors)
 	       (let ((alt (+ (aref dist u)
 			     1
@@ -104,6 +105,11 @@ source to the corresponding node."
 		     (setf (aref dist v) alt
 			   (aref previous v) u)))))))
     dist))
+
+#+nil
+(defparameter *sol* (dijkstra graph :source (+ 49 (* 50 4))))
+
+(+ 49 (* 50 4))
 
 #+nil
 (dijkstra graph)
@@ -192,10 +198,10 @@ source to the corresponding node."
      (setf (aref m2 j i) (floor (aref m j i) 3)))))
 (write-pgm "o.pgm" m2)
 #+nil
-(dotimes (j 10)
-  (dotimes (i 10) ;; centers, border pixels are at 3,4,5
-    (let* ((x (+ 3 2 (* 8 j)))
-	   (y (+ 3 2 (* 8 i)))
+(dotimes (j 50)
+  (dotimes (i 50) ;; centers, border pixels are at 3,4,5
+    (let* ((x (+ 3 2 (* 8 i)))
+	   (y (+ 3 2 (* 8 j)))
 	   (a (conv (aref m (- y 4) x)))
 	   (l (conv (aref m y (- x 4))))
 	   (r (conv (aref m y (+ x 4))))
@@ -205,9 +211,9 @@ source to the corresponding node."
 	    (aref m2 (+ y 3) x) (* 127 (+ 1 b))
 	    (aref m2 (+ y 3) (+ x 1)) (* 127 (+ 1 b))
 	  
-;	    (aref m2 (- y 3) (- x 1)) (* 127 (+ 1 a))
-;	    (aref m2 (- y 3) x) (* 127 (+ 1 a))
-;	    (aref m2 (- y 3) (+ x 1)) (* 127 (+ 1 a))
+	    (aref m2 (- y 3) (- x 1)) (* 127 (+ 1 a))
+	    (aref m2 (- y 3) x) (* 127 (+ 1 a))
+	    (aref m2 (- y 3) (+ x 1)) (* 127 (+ 1 a))
 	    
 	    (aref m2 (- y 1) (- x 3)) (* 127 (+ 1 l))
 	    (aref m2 y (- x 3)) (* 127 (+ 1 l))
@@ -217,7 +223,7 @@ source to the corresponding node."
 	    (aref m2 y (+ x 3)) (* 127 (+ 1 r))
 	    (aref m2 (+ y 1) (+ x 3)) (* 127 (+ 1 r))
 
-	    ;(aref m2 y x) 255
+	    (aref m2 y x) 255
 )
       (setf (aref aa j i) a
 	    (aref bb j i) b
@@ -225,21 +231,31 @@ source to the corresponding node."
 	    (aref rr j i) r))))
 (defparameter graph (make-array (* 50 50) :element-type 'cons
 				:initial-element nil))
+
+
 #+nil
 (dotimes (j 50)
   (dotimes (i 50)
-    (let ((p (+ (* j 50) i)))
-      (when (and (< j 48) (aref bb j i))
-	(push (+ p 50) (aref graph p)))
-      (when (and (< 0 j) (aref aa j i))
-	(push (- p 50) (aref graph p)))
-      (when (and (< i 48) (aref rr j i))
-	(push (+ p 1) (aref graph p)))
-      (when (and (< 0 i) (aref ll j i))
-	(push (- p 1) (aref graph p))))))  
+    (let ((p (array-row-major-index aa j i)))
+      (when (and (< j 48) (= 1 (aref bb j i)))
+	(push (array-row-major-index aa (+ j 1) i)
+	      (aref graph p)))
+      (when (and (< 0 j) (= 1 (aref aa j i)))
+	(push (array-row-major-index aa (- j 1) i)
+	      (aref graph p)))
+      (when (and (< i 48) (= 1 (aref rr j i)))
+	(push (array-row-major-index aa j (+ i 1))
+	      (aref graph p)))
+      (when (and (< 0 i) (= 1 (aref ll j i)))
+	(push (array-row-major-index aa j (- i 1))
+	      (aref graph p))))))  
+(aref bb 0 1)
+
+
+(aref aa 0 2)
 
 #+nil
-(defparameter *sol* (dijkstra graph))
+(defparameter *sol* (dijkstra graph :source (array-row-major-index aa 9 49)))
 
 (defparameter o (make-array (list 50 50)
 			    :element-type '(unsigned-byte 8)))
