@@ -47,6 +47,7 @@
 
 ;; potentially one could leave out one case if the input graph isn't
 ;; directed
+#+nil
 (defun dist-between (u v graph len)
   "Try to find distance either in u or v entry of graph. If LEN is nil
 distance defaults to unity."
@@ -66,6 +67,17 @@ distance defaults to unity."
 #+nil
 (dist-between 2 0 graph len)
 
+
+(defun dist-between (u v graph len)
+  "Find if u and v are connected (by length vertex of length 1)."
+  (when (position v (elt graph u))
+    1))
+
+#+nil
+(dist-between 0 50 graph nil)
+#+nil
+(dist-between 50 0 graph nil)
+
 (defun dijkstra (graph &key (len nil) (source 0))
   "Return an array of the length of the shortest routes from the
 source to the corresponding node."
@@ -75,8 +87,8 @@ source to the corresponding node."
 	(previous (make-array (length graph) :element-type 'fixnum
 			      :initial-element -1)))
     (setf (elt dist source) 0d0)
-    (defparameter *unvisited* unvisited)
-    (defparameter *dist* dist)
+#+nil    (defparameter *unvisited* unvisited)
+#+nil    (defparameter *dist* dist)
     (loop while unvisited do
 	 (let ((u (smallest-dist unvisited dist)))
 	   (when (= double-float-positive-infinity (aref dist u))
@@ -85,16 +97,19 @@ source to the corresponding node."
 	   (let ((neighbors (intersection (elt graph u)
 					  unvisited)))
 	     (dolist (v neighbors)
-	      (let ((alt (+ (aref dist u)
-			    (dist-between u v graph len))))
-		(if (< alt (aref dist v))
-		    (setf (aref dist v) alt
-			  (aref previous v) u)))))))
+	       (let ((alt (+ (aref dist u)
+			     1
+			     #+nil (dist-between u v graph len))))
+		 (if (< alt (aref dist v))
+		     (setf (aref dist v) alt
+			   (aref previous v) u)))))))
     dist))
 
 #+nil
-(dijkstra graph len 0)
+(dijkstra graph)
 
+#+nil
+(defparameter *sol* (dijkstra graph))
 
 (defun read-pgm (filename)
   (declare ((or pathname string) filename)
@@ -152,7 +167,7 @@ source to the corresponding node."
 ; a
 ;lcr
 ; b
-
+#+nil
 (defparameter m (read-pgm "maze.pgm"))
 (defparameter aa (make-array (list 50 50)
 			    :element-type '(unsigned-byte 8)))
@@ -166,35 +181,74 @@ source to the corresponding node."
   (if (= a 0)
       0
       1))
-(dotimes (j 50)
-  (dotimes (i 50) ;; centers, border pixels are at 3,4,5
+
+(aref m (+ (+ 3 2) -4) (+ (+ 3 2) 8))
+
+(defparameter m2 (make-array (array-dimensions m)
+			     :element-type '(unsigned-byte 8)))
+(destructuring-bind (h w) (array-dimensions m)
+  (dotimes (j h)
+   (dotimes (i w)
+     (setf (aref m2 j i) (floor (aref m j i) 3)))))
+(write-pgm "o.pgm" m2)
+#+nil
+(dotimes (j 10)
+  (dotimes (i 10) ;; centers, border pixels are at 3,4,5
     (let* ((x (+ 3 2 (* 8 j)))
 	   (y (+ 3 2 (* 8 i)))
-	   (a (conv (aref m (+ y 3) x)))
-	   (l (conv (aref m y (- x 3))))
-	   (r (conv (aref m y (+ x 3))))
-	   (b (conv (aref m (- y 3) x))))
-     (setf (aref aa j i) a
-	   (aref bb j i) b
-	   (aref ll j i) l
-	   (aref rr j i) r))))
+	   (a (conv (aref m (- y 4) x)))
+	   (l (conv (aref m y (- x 4))))
+	   (r (conv (aref m y (+ x 4))))
+	   (b (conv (aref m (+ y 4) x))))
+      (setf 
+	    (aref m2 (+ y 3) (- x 1)) (* 127 (+ 1 b))
+	    (aref m2 (+ y 3) x) (* 127 (+ 1 b))
+	    (aref m2 (+ y 3) (+ x 1)) (* 127 (+ 1 b))
+	  
+;	    (aref m2 (- y 3) (- x 1)) (* 127 (+ 1 a))
+;	    (aref m2 (- y 3) x) (* 127 (+ 1 a))
+;	    (aref m2 (- y 3) (+ x 1)) (* 127 (+ 1 a))
+	    
+	    (aref m2 (- y 1) (- x 3)) (* 127 (+ 1 l))
+	    (aref m2 y (- x 3)) (* 127 (+ 1 l))
+	    (aref m2 (+ y 1) (- x 3)) (* 127 (+ 1 l))
+	    
+	    (aref m2 (- y 1) (+ x 3)) (* 127 (+ 1 r))
+	    (aref m2 y (+ x 3)) (* 127 (+ 1 r))
+	    (aref m2 (+ y 1) (+ x 3)) (* 127 (+ 1 r))
+
+	    ;(aref m2 y x) 255
+)
+      (setf (aref aa j i) a
+	    (aref bb j i) b
+	    (aref ll j i) l
+	    (aref rr j i) r))))
 (defparameter graph (make-array (* 50 50) :element-type 'cons
 				:initial-element nil))
-(dotimes (j 49)
-  (dotimes (i 49)
+#+nil
+(dotimes (j 50)
+  (dotimes (i 50)
     (let ((p (+ (* j 50) i)))
-      (when (aref bb j i)
+      (when (and (< j 48) (aref bb j i))
 	(push (+ p 50) (aref graph p)))
-      (when (aref rr j i)
-	(push (+ p 1) (aref graph p))))))  
+      (when (and (< 0 j) (aref aa j i))
+	(push (- p 50) (aref graph p)))
+      (when (and (< i 48) (aref rr j i))
+	(push (+ p 1) (aref graph p)))
+      (when (and (< 0 i) (aref ll j i))
+	(push (- p 1) (aref graph p))))))  
 
 #+nil
 (defparameter *sol* (dijkstra graph))
 
+(defparameter o (make-array (list 50 50)
+			    :element-type '(unsigned-byte 8)))
+#+nil
 (dotimes (j 50)
   (dotimes (i 50)
     (let ((p (+ (* j 50) i)))
       (setf (aref o j i) (floor (if (< (elt *sol* p) 255)
 				    (elt *sol* p)
 				    255))))))
+#+nil
 (write-pgm "o.pgm" o)
